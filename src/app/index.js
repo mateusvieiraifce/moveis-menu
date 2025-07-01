@@ -3,21 +3,42 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, Image, TextInput, Button } from 'react-native';
 import logo from '../../assets/logo.png'; // Adjust the path as necessary
 import { useState } from 'react';
+import api from '../api/axiosConfig'
+import { saveData } from '../api/StorageService';
 
 export default function App() {
   
   const [username, setUsername] = useState('');
   const [password, setPassword]= useState('');
 
-  const handleLogin = ()=>{
+  const handleLogin = async ()  =>{
 
-    if (username=="ADM" && password=="ADM") {  
+    const body = {
+      user:username,
+      password:password
+    
+    }
 
-      router.replace('/logado'); // Redirect to the logged-in area
-      //alert(`Usuário: ${username}, Senha: ${password}`);
-      } else {
-      alert("Usuário ou senha inválidos");
-      } 
+    try {
+    const req = await api.post('/login',body);
+      if(req.status === 200){
+         saveData("authToken",req.data.token);
+         console.log(req.data.token);
+         router.replace('/logado'); 
+      }
+    
+    }catch(error){
+     
+     
+      if (error.response && error.response.status==404){
+        alert("Usuario inválido")
+      }
+      if (error.response && error.response.status==401){
+        alert("Senha  invalido")
+      }
+
+    }
+
   }
 
   return (
