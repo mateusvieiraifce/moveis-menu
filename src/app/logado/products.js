@@ -1,16 +1,59 @@
 import { StatusBar } from 'expo-status-bar';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { Alert, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import api from '../../api/axiosConfig'
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native-gesture-handler';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+
 
 export default function Products() {
+  const {  refreshKey } = useLocalSearchParams();
+
  const [produtcts, setProducts] = useState([
   
  ]);
 
  const [refresh, setRefresh] = useState(false)
+
+  const handleItemPress =  (itemId) => {
+
+     router.replace({
+      pathname: '/logado/editproduct',
+      params: { productId: itemId, refreshKey: Date.now() }, // Parâmetro enviado
+    });
+    console.log('Item pressionado:', itemId);
+    // Navegação ou ação desejada
+  };
+  
+
+  const handleLongPress = (itemId) => {
+    Alert.alert(
+      "Confirmar ação", // Título do Alert
+      "Tem certeza que deseja excluir este item?", // Mensagem
+      [
+        {
+          text: "Cancelar", // Botão de cancelar
+          style: "cancel", // Estilo do botão (opcional)
+        },
+        {
+          text: "Excluir", // Botão de confirmação
+          onPress: () => deletaProduto(itemId), // Ação ao confirmar
+          style: "destructive", // Estilo para ações destrutivas (iOS)
+        },
+      ],
+      { cancelable: true } // Permite fechar o Alert clicando fora (Android)
+    );
+  };
+
+
+  const deletaProduto = (id) => {
+    api.delete(`/produtos/delete/${id}`).then((response)=>{
+      console.log(response);
+      setRefresh(true);
+    }).catch((error)=>{
+      console.log(error);
+    });
+  }
 
  useEffect(()=>{
   const getData = async ()=>{
@@ -28,27 +71,25 @@ export default function Products() {
 
   getData();
 
- },[refresh])
+ },[refresh,refreshKey])
 
   return (
     <View style={styles.container}>
       <Text>Products</Text>
-      <Button  title='listar' onPress={ ()=>{
-        setRefresh(true)
-      }}></Button>
-
-      <Button  title='Novo' onPress={ ()=>{
-        router.replace('/logado/newproduct');
-      }}></Button>
-
+     
+     
       <StatusBar style="auto" />
       <ScrollView  style={styles.scroll}>
         {produtcts.map((produto, index) =>(
-          <View key={produto.id} style={styles.itens}>
+          <TouchableOpacity key={produto.id} style={styles.itens}
+          onPress={() => handleItemPress(produto.id)}
+          onLongPress={() => handleLongPress(produto.id)}
+          >
             <Text> Codigo:  {produto.barCode}</Text>
              <Text>Descrição: {produto.name}</Text>
              <Text>Preço: {produto.price}</Text>
-        </View> ))}
+
+        </TouchableOpacity> ))}
       </ScrollView>
     </View>
   );
