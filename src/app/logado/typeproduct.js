@@ -1,52 +1,79 @@
 import { StatusBar } from 'expo-status-bar';
-import { Button, StyleSheet, Text, View } from 'react-native';
-import api from '../../api/axiosConfig'
+import { Alert, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import api from '../../api/axiosConfig';
 import { useEffect, useState } from 'react';
-import { ScrollView } from 'react-native-gesture-handler';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 export default function TypeProducts() {
- const [produtcts, setTypeProducts] = useState([
-  
- ]);
+  const [typeProducts, setTypeProducts] = useState([]);
+  const [refresh, setRefresh] = useState(false);
+  const { refreshKey } = useLocalSearchParams();
 
- const [refresh, setRefresh] = useState(false)
-
- useEffect(()=>{
-  const getData = async ()=>{
-
-    const dados = api.get("/tipoproduto").then(
-      (resp)=>{
-        setTypeProducts(resp.data.tipos)
-        console.log(resp.data.tipos)
-        setRefresh(false)
+  useEffect(() => {
+    const fetchTypeProducts = async () => {
+      try {
+        const resp = await api.get('/tipoproduto');
+        setTypeProducts(resp.data.tipos || []);
+        setRefresh(false);
+      } catch (error) {
+        console.log('Erro ao buscar tipo de produto:', error);
       }
-    ).catch ((error)=>{
-      console.log(error);
-    } ) 
-  }
+    };
 
-  getData();
+    fetchTypeProducts();
+  }, [refresh, refreshKey]);
 
- },[refresh])
+  const handleLongPress = (id) => {
+    Alert.alert(
+      'Confirmar ação',
+      'Tem certeza que deseja excluir este tipo de produto?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Excluir', 
+          onPress: () => deleteTypeProduct(id), 
+          style: 'destructive' 
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const deleteTypeProduct = async (id) => {
+    try {
+      await api.delete(`/tipoproduto/delete/${id}`);
+      setRefresh(true); // força atualização local da lista
+    } catch (error) {
+      console.log('Erro ao excluir tipo de produto:', error);
+    }
+  };
+
+  const handleItemPress = (id) => {
+    router.replace({
+      pathname: '/logado/edittypeproduct',
+      params: { typeProductId: id, refreshKey: Date.now().toString() },
+    });
+  };
 
   return (
     <View style={styles.container}>
-      <Text>Type of Products</Text>
-      <Button  title='listar' onPress={ ()=>{
-        setRefresh(true)
-      }}></Button>
+      <Text style={styles.title}>Tipos de Produto</Text>
 
-      <Button  title='Novo' onPress={ ()=>{
-        router.replace('/logado/newtypeproduct');
-      }}></Button>
+      <Button title="Listar" onPress={() => setRefresh(true)} />
+      <Button title="Novo" onPress={() => router.push('/logado/newtypeproduct')} />
 
       <StatusBar style="auto" />
-      <ScrollView  style={styles.scroll}>
-        {produtcts.map((tipoproduto, index) =>(
-          <View key={tipoproduto.id} style={styles.itens}>
-             <Text>Descrição: {tipoproduto.descricao}</Text>
-        </View> ))}
+      <ScrollView style={styles.scroll}>
+        {typeProducts.map((tipo) => (
+          <TouchableOpacity
+            key={tipo.id}
+            style={styles.itens}
+            onPress={() => handleItemPress(tipo.id)}
+            onLongPress={() => handleLongPress(tipo.id)}
+          >
+            <Text>Descrição: {tipo.descricao}</Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
@@ -56,16 +83,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    paddingHorizontal: 10,
   },
-  itens:{
-    padding:10,
-    borderBottomColor:'#111',
-    borderBottomWidth:2
+  title: {
+    fontSize: 20,
+    marginVertical: 10,
   },
-  scroll:{
-    flexGrow:1,
-    padding:0
-
-  }
-
+  itens: {
+    padding: 10,
+    borderBottomColor: '#111',
+    borderBottomWidth: 2,
+  },
+  scroll: {
+    flexGrow: 1,
+    padding: 0,
+  },
 });
